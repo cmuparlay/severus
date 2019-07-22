@@ -1,0 +1,8 @@
+main_competition
+main_sequence
+main_custom
+numa_configure
+numa_configuration.hpp
+*.txt
+*.dat
+*.pdf
