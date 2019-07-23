@@ -1,18 +1,17 @@
 name_out=$1
 shift
 
-if [ -z "$2" ]; then
+if [ -z "$1" ]; then
     names_in="${name_out}"
     mode="single"
+elif [ "$1" == "--nodes" ]; then
+    names_in="${name_out}"
+    shift
+    nodes="$@"
+    mode="nodes"
 else
     names_in="$@"
     mode="multiple"
 fi
 
-fix_close_paren () {
-    sed -E "s/, (.)$/\1/g"
-}
-
-make numa_configure | grep -v -E "Nothing to be done|is up to date" 1>&2
-
-gnuplot -e "names_in=\"${names_in}\"; name_out=\"${name_out}\"" series_${mode}.plt
+gnuplot -e "names_in=\"${names_in}\"; name_out=\"${name_out}\"; nodes=\"${nodes}\"" series_${mode}.plt

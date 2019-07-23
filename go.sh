@@ -26,7 +26,11 @@ go_one() {
 
     make ${mode} | grep -v -E "Nothing to be done|is up to date" 1>&2
     echoerr "${mode}: $@"
-    ./main_${mode} $@ > "${name}.txt" || exit 1
+    if [ ! -f "${name}.txt" ]; then
+       ./main_${mode} $@ > "${name}.txt" || exit 1
+    else
+        echoerr "Reusing ${name}.txt"
+    fi
 
     if [ ${plot} -eq 1 ]; then
         if [ -x "$(command -v gnuplot)" ]; then
@@ -45,11 +49,17 @@ go_series() {
 
     make ${mode} | grep -v -E "Nothing to be done|is up to date" 1>&2
     echoerr "series: $@"
-    echoerr "running with atomic delays {$(echo {0..32..2} {36..64..4})}"
-    for atom in {0..32..2} {36..64..4}; do
-        echoerr "running atomic delay ${atom}"
-        ./main_${mode} $@ --atom "${atom}" 2>&1 1>/dev/null | grep attempts | sed -E "s/^.*attempts ([0-9]+).*successes ([0-9]+).*$/${atom} \1 \2/g"
-    done > "${name}.dat"
+
+    if [ ! -f "${name}.txt" ]; then
+       ./main_${mode} $@ > "${name}.txt" || exit 1
+       echoerr "running with atomic delays {$(echo {0..32..2} {36..64..4})}"
+       for atom in {0..32..2} {36..64..4}; do
+           echoerr "running atomic delay ${atom}"
+           ./main_${mode} $@ --atom "${atom}" | ./aggregate_log.sh "${atom}"
+       done > "${name}.dat"
+    else
+        echoerr "Reusing ${name}.dat"
+    fi
 
     if [ ${plot} -eq 1 ]; then
         if [ -x "$(command -v gnuplot)" ]; then

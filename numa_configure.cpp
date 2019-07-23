@@ -99,7 +99,7 @@ int main(int argc, char** argv) {
           smt_parity = cpu % 2;
         }
         const int cpu_position = ((cpus_per_node + spacing) * node) + (2 * smt_pair) + smt_parity;
-        printf("%d\n", cpu_position);
+        printf("%d %d %d %d\n", cpu_position, node, smt_pair, smt_parity);
       } else {
         // Hack: if the argument isn't a valid CPU, print plot labels
         printf("set xtics (");
