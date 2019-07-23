@@ -1,7 +1,7 @@
 # Severus
 
 A tool for revealing scheduling patterns in NUMA architectures.
-See our paper at PACT 2019: /Unfair Scheduling Patterns in NUMA Architectures/.
+See our paper at PACT 2019: *Unfair Scheduling Patterns in NUMA Architectures*.
 
 
 ## Dependencies
