@@ -26,10 +26,10 @@ go_one() {
 
     make ${mode} | grep -v -E "Nothing to be done|is up to date" 1>&2
     echoerr "${mode}: $@"
-    if [ ! -f "${name}.txt" ]; then
-       ./main_${mode} $@ > "${name}.txt" || exit 1
-    else
+    if [ -s "${name}.txt" ]; then
         echoerr "Reusing ${name}.txt"
+    else
+       ./main_${mode} $@ > "${name}.txt" || exit 1
     fi
 
     if [ ${plot} -eq 1 ]; then
@@ -50,15 +50,15 @@ go_series() {
     make ${mode} | grep -v -E "Nothing to be done|is up to date" 1>&2
     echoerr "series: $@"
 
-    if [ ! -f "${name}.txt" ]; then
+    if [ -s "${name}.txt" ]; then
+        echoerr "Reusing ${name}.dat"
+    else
        ./main_${mode} $@ > "${name}.txt" || exit 1
        echoerr "running with atomic delays {$(echo {0..32..2} {36..64..4})}"
        for atom in {0..32..2} {36..64..4}; do
            echoerr "running atomic delay ${atom}"
            ./main_${mode} $@ --atom "${atom}" | ./aggregate_log.sh "${atom}"
        done > "${name}.dat"
-    else
-        echoerr "Reusing ${name}.dat"
     fi
 
     if [ ${plot} -eq 1 ]; then
