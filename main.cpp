@@ -40,7 +40,8 @@ namespace po = boost::program_options;
 #define NUM_TRACE_MASK (NUM_TRACE - 1lu)
 
 // Machine-specific parameters:
-// ROUND_ROBIN: Does the machine name its CPUs in round-robin fashion over the NUMA nodes or not?
+// ROUND_ROBIN: Does the machine name its CPUs in round-robin fashion over the NUMA nodes?
+// BLOCKS: Does the machine name its CPUs such that each node is a consecutive block?
 // NUM_NODES: number of NUMA nodes
 // NUM_NODES_SHIFT: ceil(log_2(NUM_NODES))
 // NUM_CPUS: number of CPUs on this machine ( simultaneous multithreading)
@@ -56,18 +57,21 @@ namespace po = boost::program_options;
 
 #ifdef AWARE
 #define ROUND_ROBIN true
+#define BLOCKS false
 #define NUM_NODES 4
 #define NUM_NODES_SHIFT 2
 #define NUM_CPUS 144
 #define NUM_CPUS_SHIFT 8
 #elif defined(PBBS)
 #define ROUND_ROBIN false
+#define BLOCKS true
 #define NUM_NODES 8
 #define NUM_NODES_SHIFT 3
 #define NUM_CPUS 64
 #define NUM_CPUS_SHIFT 6
 #elif defined(ANDREW)
 #define ROUND_ROBIN true
+#define BLOCKS false
 #define NUM_NODES 2
 #define NUM_NODES_SHIFT 1
 #define NUM_CPUS 40
@@ -146,8 +150,12 @@ int main(int argc, char** argv) {
 #endif
         ("time", po::value<double>(&time)->default_value(2), "time in seconds to run (rounded to nearest microsecond)")
         ("nodes", po::value< std::vector<uint64_t> >(&nodes)->multitoken()->default_value(std::vector<uint64_t>(), "all nodes"), "list of active nodes")
+#if ROUND_ROBIN || BLOCKS
         ("no-smt", "do not use simultaneous multithreading")
-        ("workers", po::value< std::vector<uint64_t> >(&workers)->multitoken()->default_value(std::vector<uint64_t>(), "all workers"), "list of workers (filtered by nodes and no-smt if those are set)")
+        ("workers", po::value< std::vector<uint64_t> >(&workers)->multitoken()->default_value(std::vector<uint64_t>(), "all workers"), "list of workers (will be filtered by --nodes and --no-smt if applicable)")
+#else
+        ("workers", po::value< std::vector<uint64_t> >(&workers)->multitoken()->default_value(std::vector<uint64_t>(), "all workers"), "list of workers (will be filtered by --nodes if applicable)")
+#endif
 #ifdef MAPPING
 #ifdef XADD
         ("mapping", po::value< std::vector<uint64_t> >(&mapping)->multitoken()->default_value(std::vector<uint64_t>(), "0"), "node accessed during benchmark")
@@ -360,42 +368,30 @@ int main(int argc, char** argv) {
 
     uint64_t num_attempt_total = 0;
     uint64_t num_success_total = 0;
-    uint64_t num_streak_total = 0;
+    // uint64_t num_streak_total = 0;
     mtca::assoc_item_open("summary");
     mtca::list_open();
     for (auto& worker : p.workers) {
         num_attempt_total += p.num_read[worker];
         num_success_total += p.num_success[worker];
-        num_streak_total += p.num_streak[worker];
+        // num_streak_total += p.num_streak[worker];
         mtca::list_item_open();
         mtca::assoc_open();
         mtca::assoc_item("worker", worker);
         mtca::assoc_item("numAttempt", p.num_read[worker]);
         mtca::assoc_item("numSuccess", p.num_success[worker]);
         mtca::assoc_item("numFailure", p.num_read[worker] - p.num_success[worker]);
-        mtca::assoc_item("numStreak", p.num_streak[worker]);
+        // mtca::assoc_item("numStreak", p.num_streak[worker]);
         mtca::assoc_close();
         mtca::list_item_close();
     }
     mtca::list_close();
     mtca::assoc_item_close();
-    eprintf(
-#ifdef XADD
-            "attempts %lu, successes %lu, ratio %f\n",
-#else
-            "attempts %lu, successes %lu, ratio %f, streaks %lu, adjusted ratio %f\n",
-#endif
+    eprintf("attempts %lu, successes %lu, ratio %f\n",
             num_attempt_total,
             num_success_total,
             ((double) num_success_total) / ((double) (num_attempt_total))
-#ifdef XADD
-#else
-            ,
-            num_streak_total,
-            ((double) num_streak_total) /
-            ((double) (num_attempt_total - num_success_total + num_streak_total))
-#endif
-);
+            );
 
     mtca::assoc_close();
 

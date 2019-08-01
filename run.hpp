@@ -34,7 +34,7 @@ struct test_params {
     volatile bool stop_now;
     uint64_t num_read[NUM_CPUS];
     uint64_t num_success[NUM_CPUS];
-    uint64_t num_streak[NUM_CPUS];
+    // uint64_t num_streak[NUM_CPUS];
 };
 
 static uint64_t virtual_loc(uint64_t i, uint64_t loc_mask) {
@@ -90,7 +90,7 @@ static void* run_one(par::with_worker<test_params *> *wx) {
     uint64_t iter_success = iter_success_start;
     // Starts at 1 because 0 is reserved for the initial shared_item.
     uint64_t iter_attempt = 1;
-    uint64_t iter_streak = 0;
+    // uint64_t iter_streak = 0;
     // p.stop_now is "frozen", so we need to use wx->value->stop.
 #ifdef MAPPING
     shared_item* shared_data_mapping = p.shared_data[p.mapping[cpu_node(worker)]];
@@ -109,7 +109,7 @@ static void* run_one(par::with_worker<test_params *> *wx) {
 #else
         shared_item *loc = physical_loc(p.shared_data, vloc);
 #endif
-        naive(worker, &iter_attempt, &iter_streak, loc, p.local_data[worker].array, p.len_atom, p.len_prep, vloc);
+        naive(worker, &iter_attempt, /*&iter_streak,*/ loc, p.local_data[worker].array, p.len_atom, p.len_prep, vloc);
         wait(p.len_wait);
         iter_success++;
     }
@@ -124,7 +124,7 @@ static void* run_one(par::with_worker<test_params *> *wx) {
 #endif
         ;
     wx->value->num_success[worker] = iter_success - iter_success_start;
-    wx->value->num_streak[worker] = iter_streak;
+    // wx->value->num_streak[worker] = iter_streak;
     debugf("run_one %lu END\n", worker);
     return NULL;
 }

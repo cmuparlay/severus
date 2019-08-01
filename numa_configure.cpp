@@ -76,8 +76,7 @@ int main(int argc, char** argv) {
   const bool blocks = is_blocks(num_nodes, num_cpus);
 
   if (!round_robin && !blocks) {
-    fprintf(stderr, "ERROR: CPU numbering pattern is neither blocks nor round-robin.\n");
-    exit(1);
+    fprintf(stderr, "WARNING: CPU numbering pattern is neither blocks nor round-robin.\n    (The '--no-smt' option will not work,\n    but that is okay for the purposes of 'paper.sh'.)\n");
   }
 
   if (argc >= 2) {
@@ -116,6 +115,7 @@ int main(int argc, char** argv) {
     def("NUM_CPUS", "%d", num_cpus);
     def("NUM_CPUS_SHIFT", "%d", num_cpus_shift);
     def("ROUND_ROBIN", "%s", round_robin ? "true" : "false");
+    def("BLOCKS", "%s", blocks ? "true" : "false");
   }
   return 0;
 }

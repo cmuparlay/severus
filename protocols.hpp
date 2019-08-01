@@ -83,15 +83,15 @@ static void wait(uint64_t delay) {
 #endif
 }
 
-static void naive(uint64_t worker, uint64_t *iter, uint64_t *iter_streak, shared_item *x, local_item* log, uint64_t len_atom, uint64_t len_prep, uint64_t vloc) {
+static void naive(uint64_t worker, uint64_t *iter, /*uint64_t *iter_streak,*/ shared_item *x, local_item* log, uint64_t len_atom, uint64_t len_prep, uint64_t vloc) {
 #ifdef XADD
     xadd(x, 1, log, iter, vloc);
     wait(len_prep);
     return;
 #endif
-    const uint64_t ourBuddy = buddy(worker);
+    // const uint64_t ourBuddy = buddy(worker);
     bool success = false;
-    bool new_streak = false;
+    // bool new_streak = false;
 #ifdef ONEREAD
     uint64_t start_iter = *iter;
 #endif
@@ -106,10 +106,10 @@ static void naive(uint64_t worker, uint64_t *iter, uint64_t *iter_streak, shared
         wait(len_prep);
         // Read
         val = read(x, log, iter);
-        uint64_t them = shared_item_worker(val);
-        if (!new_streak && worker != them && ourBuddy != them) {
-            new_streak = true;
-        }
+        // uint64_t them = shared_item_worker(val);
+        // if (!new_streak && worker != them && ourBuddy != them) {
+        //     new_streak = true;
+        // }
         wait(len_atom);
 #endif
 #ifdef ONEREAD
@@ -124,5 +124,5 @@ static void naive(uint64_t worker, uint64_t *iter, uint64_t *iter_streak, shared
         wait(len_prep);
 #endif
     } while (!success);
-    *iter_streak += (uint64_t) new_streak;
+    // *iter_streak += (uint64_t) new_streak;
 }
