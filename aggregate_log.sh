@@ -1,6 +1,6 @@
 x=$1
 
-ns=$(grep numAttempt <&0 | sed -E "s/^.*\"worker\" -> ([0-9]+).*\"numAttempt\" -> ([0-9]+).*\"numSuccess\" -> ([0-9]+).*$/\1,\2,\3/g")
+ns=$(sed -nE "s/^.*\"worker\" -> ([0-9]+).*\"numAttempt\" -> ([0-9]+).*\"numSuccess\" -> ([0-9]+).*$/\1,\2,\3/p" <&0)
 ns2=$(echo "$(for n in ${ns}; do
     IFS=,
     m=(${n})

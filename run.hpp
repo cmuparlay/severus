@@ -137,7 +137,7 @@ struct set_after_time_t {
 
 static void* set_after_time_helper(void *params) {
     set_after_time_t p = *((set_after_time_t *)params);
-    sleep(p.time);
+    usleep(p.time);
     *(p.flag) = p.value;
     free(params);
     debugf("set after time %u %p %i\n", p.time, p.flag, p.value);

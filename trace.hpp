@@ -1,6 +1,7 @@
 #pragma once
 
 #include "run.hpp"
+#include <sysexits.h>
 
 //iter refers to iteration in local log, index refers to index of success in global log
 struct local_info_item {
@@ -23,8 +24,7 @@ static void xadd_trace(sized_array<shared_item>* traces,
                        const std::vector<uint64_t>& workers,
                        shared_item** shared_data,
                        sized_array<local_item>* local_data,
-                       uint64_t num_locs,
-                       uint64_t length) {
+                       uint64_t num_locs) {
     debugf("xadd_trace\n");
     for(uint64_t mapping_index = 0; mapping_index < NUM_MAPPINGS; mapping_index++) {
         for(uint64_t vloc = 0; vloc < num_locs; vloc++) {
@@ -44,6 +44,11 @@ static void xadd_trace(sized_array<shared_item>* traces,
                 // debugf("xadd current val is %lu\n", current);
                 for (auto& worker: workers) {
                     sized_array<local_item> log = local_data[worker];
+                    if (log.array[NUM_LOCAL_DATA - 1].val != DUMMY_SHARED_ITEM) {
+                        // We used the entire log, so we started overflowing.
+                        eprintf("Error: log overflow\n");
+                        exit(EX_SOFTWARE);
+                    }
                     local_item entry = log.array[worker_index[worker]];
                     //find next relevant entry
                     while (entry.loc != vloc && worker_index[worker] < log.len-1) {

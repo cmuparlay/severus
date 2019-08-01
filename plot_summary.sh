@@ -7,7 +7,7 @@ fix_close_paren () {
 
 make numa_configure | grep -v -E "Nothing to be done|is up to date" 1>&2
 
-ns=$(cat "${name}.txt" | grep numAttempt | sed -E "s/^.*\"worker\" -> ([0-9]+).*\"numAttempt\" -> ([0-9]+).*\"numSuccess\" -> ([0-9]+).*$/\1,\2,\3/g")
+ns=$(sed -nE "s/^.*\"worker\" -> ([0-9]+).*\"numAttempt\" -> ([0-9]+).*\"numSuccess\" -> ([0-9]+).*$/\1,\2,\3/p" "${name}.txt")
 echo "$(for n in ${ns}; do
     IFS=,
     m=(${n})

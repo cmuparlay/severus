@@ -1,4 +1,6 @@
-# If you want more accurate series plots, try increasing TIME_SERIES to 10.
+# For more accurate plots, increase these times (e.g. to 10).
+# If you are getting segfaults, decrease them (e.g. to 0.5).
+TIME_SEQUENCE=2
 TIME_SERIES=2
 
 # Increase TRIALS to run more trials.
@@ -37,6 +39,10 @@ echo_help() {
     echoerr "  (Use 'numactl -H' to learn the node layout on your machine.)"
 }
 
+make_quiet() {
+    make $1 | grep -v -E "Nothing to be done|is up to date" 1>&2
+}
+
 case $1 in
     --output | -output )
         shift
@@ -61,7 +67,7 @@ case ${mode} in
         ;;
     mapping | -mapping | --mapping )
         mode=mapping
-        mapping="$@"
+        mapping=($@)
         ;;
     help | -h | -help | --help )
         echo_help
@@ -75,8 +81,8 @@ case ${mode} in
 esac
 echoerr "Mode: ${mode} ${mapping[@]}"
 
-make numa_configure | grep -v -E "Nothing to be done|is up to date" 1>&2
-num_nodes=$(./numa_configure | grep "#define NUM_NODES " | sed -E "s/.* ([0-9]+)$/\1/g")
+make_quiet numa_configuration.hpp
+num_nodes=$(sed -nE "s/^#define NUM_NODES ([0-9]+)$/\1/p" numa_configuration.hpp)
 
 case ${mode} in
     intel )
@@ -94,6 +100,7 @@ case ${mode} in
     mapping )
         if [ ! ${num_nodes} -eq ${#mapping[@]} ]; then
             echoerr "Error: the mapping should have length ${num_nodes}, one entry per NUMA node"
+            exit 1
         fi
 esac
 
@@ -102,13 +109,14 @@ mkdir -p "${DIR}/sequence"
 mkdir -p "${DIR}/fairness"
 mkdir -p "${DIR}/focus"
 
+opts_sequence="--time ${TIME_SEQUENCE}"
 opts_series="--time ${TIME_SERIES} --wait 256"
 
 #Sequence experiments, all nodes
 for ((TRIAL=0;TRIAL<TRIALS;TRIAL++)); do
 	for ((NODE=0;NODE<num_nodes;NODE++)); do
         name="${DIR}/sequence/SequenceAll${NODE}-${TRIAL}"
-    	./go.sh sequence "${name}" --mapping ${NODE}
+    	./go.sh sequence "${name}" ${opts_sequence} --mapping ${NODE}
     done
 done
 
@@ -116,7 +124,7 @@ done
 for ((TRIAL=0;TRIAL<TRIALS;TRIAL++)); do
 	for ((NODE=0;NODE<num_nodes;NODE++)); do
         name="${DIR}/sequence/SequenceSingle${NODE}-${TRIAL}"
-    	./go.sh sequence "${name}" --nodes ${NODE}
+    	./go.sh sequence "${name}" ${opts_sequence} --nodes ${NODE}
 	done
 done
 
@@ -175,8 +183,8 @@ case ${mode} in
             name1="${DIR}/focus/Focus-Remote-${TRIAL}"
             name2="${DIR}/focus/Focus-Split-${TRIAL}"
 		    ./go.sh --no-plot series "${name0}" ${opts_series} --mapping ${all_nodes}
-		    ./go.sh --no-plot series "${name1}" ${opts_series} --mapping ${mapping}
-		    ./go.sh --no-plot series "${name2}" ${opts_series} --mapping ${all_nodes} --mapping2 ${mapping}
+		    ./go.sh --no-plot series "${name1}" ${opts_series} --mapping ${mapping[@]}
+		    ./go.sh --no-plot series "${name2}" ${opts_series} --mapping ${all_nodes} --mapping2 ${mapping[@]}
             nameAll="${DIR}/focus/Focus-${TRIAL}"
             ./plot_series.sh "${nameAll}" "${name0}" "${name1}" "${name2}"
 	    done

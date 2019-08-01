@@ -7,6 +7,8 @@ DEFS_CUSTOM = -imacros custom_configuration.hpp
 SOURCES = main.cpp run.hpp protocols.hpp get_time.hpp parallel.hpp init.hpp histo.hpp trace.hpp hash.hpp data_item.hpp helper.hpp mathematica.hpp sized_array.hpp
 DEPS_MAIN = numa_configuration.hpp $(SOURCES)
 
+.PHONY: default sequence competition custom clean
+
 default: sequence competition
 
 sequence: main_sequence

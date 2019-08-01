@@ -25,20 +25,19 @@ namespace po = boost::program_options;
 #endif
 
 #define NUM_SHARED_DATA_SHIFT 18
-#define NUM_SHARED_DATA (1l << NUM_SHARED_DATA_SHIFT)
-#define NUM_SHARED_DATA_MASK (NUM_SHARED_DATA - 1l)
+#define NUM_SHARED_DATA (1lu << NUM_SHARED_DATA_SHIFT)
+#define NUM_SHARED_DATA_MASK (NUM_SHARED_DATA - 1lu)
 
 #define MAX_SHARED_DATA_CAP_SHIFT 8
-#define MAX_SHARED_DATA_CAP (1l << MAX_SHARED_DATA_CAP_SHIFT)
+#define MAX_SHARED_DATA_CAP (1lu << MAX_SHARED_DATA_CAP_SHIFT)
 
 #define NUM_LOCAL_DATA_SHIFT 24
-#define NUM_LOCAL_DATA (1l << NUM_LOCAL_DATA_SHIFT)
-#define NUM_LOCAL_DATA_MASK (NUM_LOCAL_DATA - 1l)
+#define NUM_LOCAL_DATA (1lu << NUM_LOCAL_DATA_SHIFT)
+#define NUM_LOCAL_DATA_MASK (NUM_LOCAL_DATA - 1lu)
 
-#define NUM_TRACE_SHIFT 24
-#define NUM_TRACE (1l << NUM_TRACE_SHIFT)
-#define NUM_TRACE_MASK (NUM_TRACE - 1l)
-
+#define NUM_TRACE_SHIFT (NUM_LOCAL_DATA_SHIFT + NUM_CPUS_SHIFT)
+#define NUM_TRACE (1lu << NUM_TRACE_SHIFT)
+#define NUM_TRACE_MASK (NUM_TRACE - 1lu)
 
 // Machine-specific parameters:
 // ROUND_ROBIN: Does the machine name its CPUs in round-robin fashion over the NUMA nodes or not?
@@ -77,7 +76,7 @@ namespace po = boost::program_options;
 #include "numa_configuration.hpp"
 #endif
 
-#define NUM_NODES_MASK ((1l << NUM_NODES_SHIFT) - 1l)
+#define NUM_NODES_MASK ((1lu << NUM_NODES_SHIFT) - 1lu)
 
 #ifdef MAPPING
 #define NUM_MAPPINGS NUM_NODES
@@ -114,7 +113,7 @@ uint64_t round_pow2(uint64_t n) {
     // The left-hand expression is 63 for uint64_t,
     // but it adapts if we change to a different bit width.
     uint64_t log2_n = (sizeof n * CHAR_BIT - 1) - __builtin_clzl(n);
-    return 1l << log2_n;
+    return 1lu << log2_n;
 }
 
 int main(int argc, char** argv) {
@@ -122,7 +121,7 @@ int main(int argc, char** argv) {
     uint64_t len_prep = 0;
     uint64_t len_wait = 0;
     uint64_t num_locs;
-    uint32_t time;
+    double time;
     std::vector<uint64_t> nodes;
     std::vector<uint64_t> workers;
 #ifdef MAPPING
@@ -145,7 +144,7 @@ int main(int argc, char** argv) {
 #else
         ("nlocs", po::value<uint64_t>(&num_locs)->default_value(1), "number of locations")
 #endif
-        ("time", po::value<uint32_t>(&time)->default_value(2), "time in seconds to run")
+        ("time", po::value<double>(&time)->default_value(2), "time in seconds to run (rounded to nearest microsecond)")
         ("nodes", po::value< std::vector<uint64_t> >(&nodes)->multitoken()->default_value(std::vector<uint64_t>(), "all nodes"), "list of active nodes")
         ("no-smt", "do not use simultaneous multithreading")
         ("workers", po::value< std::vector<uint64_t> >(&workers)->multitoken()->default_value(std::vector<uint64_t>(), "all workers"), "list of workers (filtered by nodes and no-smt if those are set)")
@@ -173,7 +172,7 @@ int main(int argc, char** argv) {
     bool use_smt = vm.count("no-smt") ? false : true;
 
 #ifdef ONELOC
-    if (num_locs != 1l) {
+    if (num_locs != 1lu) {
         return usage_error("nlocs not supported when ONELOC is enabled");
     }
 #else
@@ -244,10 +243,21 @@ int main(int argc, char** argv) {
     p.split = split;
 #endif
 #endif
-    p.time = time;
+    p.time = (uint32_t) (1000000 * time);
     init(p, nodes, use_smt, workers);
 
     run(p);
+
+#if defined(LOG) && defined(XADD)
+    const uint64_t trace_print_len = NUM_TRACE/2;
+    sized_array<shared_item>* traces = new sized_array<shared_item>[NUM_MAPPINGS * num_locs];
+    for (uint64_t loc_index = 0; loc_index < NUM_MAPPINGS * num_locs; loc_index++) {
+        traces[loc_index].array = new shared_item[NUM_TRACE];
+        traces[loc_index].len = 0;
+    }
+    xadd_trace(traces, p.workers, p.shared_data, p.local_data, num_locs);
+#endif
+
 
     // Printing output.
     mtca::assoc_open();
@@ -335,27 +345,8 @@ int main(int argc, char** argv) {
     mtca::assoc_item_close();
 #endif
 
-#ifdef XADD
-    const uint64_t trace_print_len = 1048576;
-#else
-    // const uint64_t trace_print_len = 4096;
-#endif
-
-    sized_array<shared_item>* traces = new sized_array<shared_item>[NUM_MAPPINGS * num_locs];
-    for (uint64_t loc_index = 0; loc_index < NUM_MAPPINGS * num_locs; loc_index++) {
-        traces[loc_index].array = new shared_item[NUM_TRACE];
-        traces[loc_index].len = 0;
-    }
-#ifndef XADD
-    // local_info infos[NUM_CPUS];
-    // for (uint64_t worker = 0; worker < NUM_CPUS; worker++) {
-    //     infos[worker].items = new local_info_item[NUM_LOCAL_DATA];
-    // }
-#endif
-
     mtca::assoc_item_open("traces");
 #ifdef XADD
-    xadd_trace(traces, p.workers, p.shared_data, p.local_data, num_locs, trace_print_len*16);
     print_xadd_trace(traces, num_locs, trace_print_len);
 #else
     // make_trace(traces, p.workers, infos, p.shared_data, p.local_data, num_locs, trace_print_len);

@@ -18,18 +18,22 @@ echo_help() {
     echoerr "Example: try './go.sh competition cmp --mapping 1 --wait 256 --atom 12'."
 }
 
+make_quiet() {
+    make $1 | grep -v -E "Nothing to be done|is up to date" 1>&2
+}
+
 go_one() {
     mode=$1
     shift
     name=$1
     shift
 
-    make ${mode} | grep -v -E "Nothing to be done|is up to date" 1>&2
+    make_quiet ${mode}
     echoerr "${mode}: $@"
     if [ -s "${name}.txt" ]; then
         echoerr "Reusing ${name}.txt"
     else
-       ./main_${mode} $@ > "${name}.txt" || exit 1
+        ./main_${mode} $@ > "${name}.txt" || exit 1
     fi
 
     if [ ${plot} -eq 1 ]; then
@@ -47,7 +51,7 @@ go_series() {
     name=$1
     shift
 
-    make ${mode} | grep -v -E "Nothing to be done|is up to date" 1>&2
+    make_quiet ${mode}
     echoerr "series: $@"
 
     if [ -s "${name}.dat" ]; then
@@ -107,7 +111,7 @@ name=$1
 shift
 case ${name} in
     help | -h | -help | --help )
-        make ${mode} | grep -v -E "Nothing to be done|is up to date" 1>&2
+        make_quiet ${mode}
         ./main_${mode} --help
         exit 1
         ;;
