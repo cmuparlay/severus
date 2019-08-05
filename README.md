@@ -30,3 +30,11 @@ You might start with:
 
 This will output results in a new `output` directory.
 For more detailed usage information, run `./paper.sh --help` and `go.sh --help`.
+
+## Publication
+
+This repository is also accessible through Zenodo, DOI 10.5281/zenodo.3360044.
+
+It can be found at https://doi.org/10.5281/zenodo.3360044.
+
+Please use this DOI when citing this repositoy.
